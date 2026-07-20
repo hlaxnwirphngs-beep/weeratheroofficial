@@ -6,7 +6,7 @@ import {
   UserCog, Shield, Settings, Activity, Database, BarChart3, Trash2, LogOut,
   ChevronLeft, ChevronRight, X, Mail
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 const MAIN_LINKS = [
   { name: 'ภาพรวม (Dashboard)', path: '/admin', icon: LayoutDashboard },
@@ -164,6 +164,12 @@ export default function AdminLayout() {
         </nav>
 
         <div className="p-4 border-t border-white/10 shrink-0">
+          <div className={`mb-4 flex items-center justify-center md:justify-start px-3 py-2 rounded-lg text-xs font-medium ${isSupabaseConfigured() ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`} title={isSupabaseConfigured() ? 'เชื่อมต่อฐานข้อมูล Cloud แล้ว' : 'ใช้งานฐานข้อมูลจำลอง (Local)'}>
+            <div className={`w-2 h-2 rounded-full mr-2 ${isSupabaseConfigured() ? 'bg-green-400' : 'bg-amber-400'}`}></div>
+            {!isCollapsed && (
+              <span>{isSupabaseConfigured() ? 'Connected' : 'Local Data'}</span>
+            )}
+          </div>
           <button
             onClick={handleLogout}
             className={`flex items-center w-full py-2.5 text-white/70 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors text-sm px-3 ${

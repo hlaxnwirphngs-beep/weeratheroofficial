@@ -125,7 +125,7 @@ export const useStore = create<StoreState>()(
         isSupabaseInitialized = true;
         
         const tablesToSync: (keyof StoreState)[] = [
-          'news', 'activities', 'gallery', 'users', 'donations', 'abbots', 'announcements', 'popups', 'contactInfo', 'settings'
+          'news', 'activities', 'gallery', 'users', 'donations', 'abbots', 'announcements', 'popups', 'contactMessages', 'settings'
         ];
         
         // Initial Fetch
@@ -167,7 +167,7 @@ export const useStore = create<StoreState>()(
 
       addItem: async (table, item) => {
         let finalItem = item;
-        const syncableTables = ['news', 'activities', 'gallery', 'users', 'donations', 'abbots', 'announcements', 'popups', 'contactInfo', 'settings'];
+        const syncableTables = ['news', 'activities', 'gallery', 'users', 'donations', 'abbots', 'announcements', 'popups', 'contactMessages', 'settings'];
         if (isSupabaseConfigured() && syncableTables.includes(table as string)) {
           try {
             const { data, error } = await supabase.from(table).insert(item).select().single();
@@ -200,7 +200,7 @@ export const useStore = create<StoreState>()(
         });
       },
       updateItem: async (table, item) => {
-        const syncableTables = ['news', 'activities', 'gallery', 'users', 'donations', 'abbots', 'announcements', 'popups', 'contactInfo', 'settings'];
+        const syncableTables = ['news', 'activities', 'gallery', 'users', 'donations', 'abbots', 'announcements', 'popups', 'contactMessages', 'settings'];
         if (isSupabaseConfigured() && syncableTables.includes(table as string)) {
           try {
             await supabase.from(table).update(item).eq('id', item.id);
@@ -230,7 +230,7 @@ export const useStore = create<StoreState>()(
         });
       },
       deleteItem: async (table, id) => {
-        const syncableTables = ['news', 'activities', 'gallery', 'users', 'donations', 'abbots', 'announcements', 'popups', 'contactInfo', 'settings'];
+        const syncableTables = ['news', 'activities', 'gallery', 'users', 'donations', 'abbots', 'announcements', 'popups', 'contactMessages', 'settings'];
         if (isSupabaseConfigured() && syncableTables.includes(table as string)) {
           try {
             await supabase.from(table).delete().eq('id', id);
