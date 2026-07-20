@@ -1,0 +1,1 @@
+sed -i "s/import { Plus, Search, Edit, Trash2, X } from 'lucide-react';/import { Plus, Search, Edit, Trash2, X } from 'lucide-react';\nimport React, { useState, useEffect } from 'react';/g" src/components/admin/GenericCRUD.tsx

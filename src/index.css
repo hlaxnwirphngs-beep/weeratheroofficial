@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "TH Sarabun New", "Sarabun", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "TH Sarabun New", "Sarabun", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-bg-base: #FDFBF7;
+  --color-text-main: #2C2C2C;
+  --color-accent-brown: #8B7355;
+  --color-accent-gold: #C5A059;
+  --color-accent-deep: #1B3022;
+  --color-line-sep: rgba(139, 115, 85, 0.2);
+
+  /* Mapping to existing tailwind colors where applicable */
+  --color-stone-50: #FDFBF7;
+  --color-stone-900: #1B3022;
+  
+  --color-gold-400: #C5A059;
+  --color-gold-500: #C5A059;
+  --color-gold-600: #8B7355;
+  --color-gold-700: #8B7355;
+
+  --animate-marquee: marquee 25s linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0%);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-bg-base text-text-main font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .luxury-shadow {
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.08);
+  }
+  
+  .border-sep {
+    border-color: var(--color-line-sep);
+  }
+  
+  .glass {
+    background: rgba(253, 251, 247, 0.7);
+    backdrop-filter: blur(8px);
+  }
+}
