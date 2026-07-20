@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { X, Plus, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 interface MultiImageUploadProps {
   values: string[];
-  onChange: (base64s: string[]) => void;
+  onChange: (urlsOrBase64s: string[]) => void;
   onUploadingStateChange?: (isUploading: boolean) => void;
 }
 
@@ -13,71 +14,114 @@ interface UploadTask {
   name: string;
   progress: number;
   preview: string;
+  file?: File;
+  finalUrl?: string;
 }
 
 export default function MultiImageUpload({ values = [], onChange, onUploadingStateChange }: MultiImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingItems, setUploadingItems] = useState<UploadTask[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Lock saving and run the reactive simulated progress
   useEffect(() => {
-    if (uploadingItems.length === 0) return;
+    if (uploadingItems.length === 0 || isProcessing) return;
 
-    // Check if all items have completed progress
-    const allFinished = uploadingItems.every(item => item.progress === 100);
+    const allFinished = uploadingItems.every(item => item.progress >= 100 && (item.finalUrl || !isSupabaseConfigured()));
 
     if (allFinished) {
-      // Wait a moment for visual confirmation, then merge and reset
+      setIsProcessing(true);
       const timer = setTimeout(() => {
-        const newBase64s = uploadingItems.map(item => item.preview);
-        onChange([...values, ...newBase64s]);
+        const newUrls = uploadingItems.map(item => item.finalUrl || item.preview);
+        onChange([...values, ...newUrls]);
         setUploadingItems([]);
+        setIsProcessing(false);
         onUploadingStateChange?.(false);
       }, 800);
       return () => clearTimeout(timer);
     }
-
-    // Progress updates at regular intervals with natural variation
-    const progressTimer = setTimeout(() => {
-      setUploadingItems(prevItems =>
-        prevItems.map(item => {
-          if (item.progress >= 100) return item;
-          const increment = Math.floor(Math.random() * 12) + 8; // add 8% to 20%
-          const nextProgress = Math.min(item.progress + increment, 100);
-          return { ...item, progress: nextProgress };
-        })
-      );
-    }, 180);
-
-    return () => clearTimeout(progressTimer);
-  }, [uploadingItems, values, onChange, onUploadingStateChange]);
+  }, [uploadingItems, values, onChange, onUploadingStateChange, isProcessing]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // Notify parent that upload is starting
       onUploadingStateChange?.(true);
 
       const fileList = Array.from(files);
-      const readers = fileList.map((file: File) => {
-        return new Promise<UploadTask>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve({
-              id: Math.random().toString(36).substring(2, 9),
-              name: file.name,
-              progress: 1, // Start at 1% for animation entry
-              preview: reader.result as string
-            });
-          };
-          reader.readAsDataURL(file);
-        });
-      });
+      const newTasks: UploadTask[] = fileList.map((file: File) => ({
+        id: Math.random().toString(36).substring(2, 9),
+        name: file.name,
+        progress: 1,
+        preview: URL.createObjectURL(file),
+        file,
+      }));
 
-      Promise.all(readers).then((tasks) => {
-        setUploadingItems(tasks);
+      setUploadingItems(newTasks);
+
+      newTasks.forEach(task => {
+        uploadFile(task);
       });
     }
+  };
+
+  const uploadFile = async (task: UploadTask) => {
+    if (isSupabaseConfigured() && task.file) {
+      try {
+        const fileExt = task.file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        // Simulate progress while uploading
+        const interval = setInterval(() => {
+          setUploadingItems(prev => prev.map(item => {
+            if (item.id === task.id && item.progress < 90) {
+              return { ...item, progress: item.progress + 10 };
+            }
+            return item;
+          }));
+        }, 200);
+
+        const { error, data } = await supabase.storage
+          .from('images')
+          .upload(filePath, task.file);
+
+        clearInterval(interval);
+
+        if (error) {
+          console.error('Error uploading image:', error);
+          await convertToBase64(task);
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+          
+          setUploadingItems(prev => prev.map(item => 
+            item.id === task.id ? { ...item, progress: 100, finalUrl: publicUrl } : item
+          ));
+        }
+      } catch (error) {
+        console.error(error);
+        await convertToBase64(task);
+      }
+    } else {
+      await convertToBase64(task);
+    }
+  };
+
+  const convertToBase64 = (task: UploadTask) => {
+    return new Promise<void>((resolve) => {
+      if (!task.file) {
+        setUploadingItems(prev => prev.map(item => item.id === task.id ? { ...item, progress: 100 } : item));
+        return resolve();
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadingItems(prev => prev.map(item => 
+          item.id === task.id ? { ...item, progress: 100, preview: reader.result as string } : item
+        ));
+        resolve();
+      };
+      reader.readAsDataURL(task.file);
+    });
   };
 
   const removeImage = (indexToRemove: number) => {

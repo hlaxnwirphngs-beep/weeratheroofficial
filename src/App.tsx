@@ -1,7 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import PublicLayout from './components/layout/PublicLayout';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useStore } from './store/useStore';
 
 // Public Pages
 import Home from './pages/public/Home';
@@ -59,9 +61,19 @@ const AdminPlaceholder = ({ title }: { title: string }) => (
 );
 
 export default function App() {
+  const initSupabaseSync = useStore(state => state.initSupabaseSync);
+
+  useEffect(() => {
+    initSupabaseSync();
+  }, [initSupabaseSync]);
+
   return (
     <BrowserRouter>
       <Routes>
+        {/* Redirects for Vercel/general compatibility */}
+        <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/admin" replace />} />
+
         {/* Public Routes */}
         <Route path="/" element={<PublicLayout />}>
           <Route index element={<Home />} />
@@ -103,6 +115,9 @@ export default function App() {
             <Route path="recycle-bin" element={<RecycleBin />} />
           </Route>
         </Route>
+
+        {/* Catch-all route for 404s */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

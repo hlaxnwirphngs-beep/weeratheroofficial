@@ -1,23 +1,58 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 interface ImageUploadProps {
   value: string;
-  onChange: (base64: string) => void;
+  onChange: (urlOrBase64: string) => void;
 }
 
 export default function ImageUpload({ value, onChange }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onChange(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (isSupabaseConfigured()) {
+        try {
+          setIsUploading(true);
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random()}.${fileExt}`;
+          const filePath = `${fileName}`;
+
+          const { error: uploadError, data } = await supabase.storage
+            .from('images')
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error('Error uploading image:', uploadError);
+            // Fallback to base64 if bucket doesn't exist or error
+            readAsBase64(file);
+          } else {
+            const { data: { publicUrl } } = supabase.storage
+              .from('images')
+              .getPublicUrl(filePath);
+            onChange(publicUrl);
+          }
+        } catch (error) {
+          console.error(error);
+          readAsBase64(file);
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        readAsBase64(file);
+      }
     }
+  };
+
+  const readAsBase64 = (file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      onChange(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -35,11 +70,20 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
         </div>
       ) : (
         <div 
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full h-40 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-[#C5A059] hover:bg-[#C5A059]/5 transition-colors"
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+          className={`w-full h-40 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:border-[#C5A059] hover:bg-[#C5A059]/5'}`}
         >
-          <Upload className="w-8 h-8 text-gray-400 mb-2" />
-          <span className="text-sm text-gray-500">คลิกเพื่ออัปโหลดรูปภาพ</span>
+          {isUploading ? (
+            <>
+              <Loader2 className="w-8 h-8 text-[#C5A059] mb-2 animate-spin" />
+              <span className="text-sm text-gray-500">กำลังอัปโหลด...</span>
+            </>
+          ) : (
+            <>
+              <Upload className="w-8 h-8 text-gray-400 mb-2" />
+              <span className="text-sm text-gray-500">คลิกเพื่ออัปโหลดรูปภาพ</span>
+            </>
+          )}
         </div>
       )}
       <input
